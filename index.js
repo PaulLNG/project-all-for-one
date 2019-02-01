@@ -14,14 +14,16 @@ app.use(bodyParser.json());
 
 const User = db.sequelize.import(__dirname + "/models/user")
 
-app.get('/api/v1/users', (request, response) => {
+myRouter.route('/api/v1/users')
+.get(function(request, response){
     response.setHeader('content-type', 'application/json');
     	User.findAll({raw: true}).then( (val) => {
         response.send(val)
     });
 });
 
-app.post('/api/v1/login', (request, response) => {
+myRouter.route('/api/v1/login')
+.post(function(request, response){
     response.setHeader('content-type', 'application/json');
     User.sync().then(() => {
     	User.findOne({ 
