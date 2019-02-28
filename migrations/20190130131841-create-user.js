@@ -14,9 +14,6 @@ module.exports = {
       password: {
         type: Sequelize.STRING
       },
-      local_key: {
-        type: Sequelize.STRING
-      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE

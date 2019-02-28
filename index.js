@@ -1,23 +1,25 @@
+//Server
 var express = require('express');
-//Nous créons un objet de type Express. 
 var app = express(); 
-
-// Méthode rapide pour création d'un objet de type Express
-//var app = require('express')();
-
+const server = require('http').createServer(app);
 const bodyParser = require('body-parser');
-var db = require('./models/index');
-var myRouter = express.Router();
 
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
-const saltRounds = 10;
-const salt = bcrypt.genSaltSync(saltRounds);
+var io = require('socket.io')(server);
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
+var router = express.Router();
+
+//Models
+var db = require('./models/index');
 const User = db.sequelize.import(__dirname + "/models/user")
+
+//Auth
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
+const salt = bcrypt.genSaltSync(saltRounds);
 
 /** verifyToken method - this method verifies token */
 function verifyToken(req, res, next){
@@ -34,12 +36,15 @@ function verifyToken(req, res, next){
         req.token = bearerToken;
         //call next middleware
         next();
-    }else{
+    } else{
         res.sendStatus(403);
     }
 }
 
-myRouter.route('/api/v1/users')
+/**-------------------------------------------------------------------USER API---------------------------------------------------------------- **/
+
+// (GET) All users
+router.route('/api/v1/users')
 .get(function(request, response){
     response.setHeader('content-type', 'application/json');
     	User.findAll({raw: true}).then( (val) => {
@@ -47,20 +52,8 @@ myRouter.route('/api/v1/users')
     });
 });
 
-myRouter.route('/api/v1/signin')
-.post(function (request, response){
-	response.setHeader('content-type', 'application/json');
-    const user = {
-        id: 1,
-        username: "johndoe",
-        email: "john.doe@test.com"
-    }
-    jwt.sign({user},'SuperSecRetKey', { expiresIn: 60 * 60 }, (err, token) => {
-    	response.json({token});
-    });
-});
-
-myRouter.route('/api/v1/login')
+// (POST) Login route
+router.route('/api/v1/login')
 .post(function(request, response){
     response.setHeader('content-type', 'application/json');
     
@@ -91,23 +84,10 @@ myRouter.route('/api/v1/login')
 });
 
 
-myRouter.route('/api/v1/user')
-//.post(verifyToken , function(request, response){
+// (POST) Create a user
+router.route('/api/v1/user')
 .post(function(request, response){
     response.setHeader('content-type', 'application/json');
-
-//    // Vérifie le token
-//    jwt.verify(request.token, 'SuperSecRetKey', (err, authData)=>{
-//        if(err){
-//        	response.sendStatus(403);
-//        }else{
-//        	response.json({
-//                msg: "A new post is created",
-//                authData
-//            });
-//        }
-//    });
-    
     if (request.body.username && request.body.password) {
     	
     	var passwordEncoded = bcrypt.hashSync(request.body.password , salt );
@@ -116,8 +96,6 @@ myRouter.route('/api/v1/user')
     		User.create({
     	    username: request.body.username, 
         	password: passwordEncoded
-//        	local_key: "ono"
-        	
         }).then( (user) => {
             response.send(201, {created: true});
         }).catch( (err) => {
@@ -130,11 +108,10 @@ myRouter.route('/api/v1/user')
     }
     
 })
+
+// (DELETE) Delete a user
 .delete(function(request , response){
 	response.setHeader('content-type', 'application/json');
-//	response.json({message : "Suppresion d'un user selon son ID", 
-//		  id : request.body.id,
-//		  methode : request.method});
 	
 	User.sync().then(() => {
 	  User.destroy({
@@ -149,6 +126,8 @@ myRouter.route('/api/v1/user')
 	
 	});
 })
+
+// (PUT) Edit a user
 .put(function(request , response) {
 	response.setHeader('content-type', 'application/json');
 //	response.json({message : "Modification d'un user selon son ID", 
@@ -177,9 +156,79 @@ myRouter.route('/api/v1/user')
 	});
 });
 
-//Nous demandons à l'application d'utiliser notre routeur
-app.use(myRouter);  
+/**-----------------------------------------------------------------------------SOCKET ROOMS---------------------------------------------------------------**/
 
-app.listen(8080,() => {
+var openedRooms = {};
+
+//Namespace global
+io.of('/music-rooms').on('connection', (socket) => {
+
+    var user;
+
+    //Client
+    console.log("AFO_", 'Somebody joined the global namespace');
+
+    //Join a room
+    socket.on('join-room', (datas) => {
+        if (!user) { user = datas.user; }
+        if( datas.uuid in openedRooms ){
+            socket.join(datas.uuid); // On rejoint la room donnée en paramètre
+            console.log("AFO_", datas.user + " has joined the room " + datas.roomName + "(" + datas.uuid + ")");
+
+            io.of('/music-rooms').in(datas.uuid).emit('new-participant', { nbParticipants : io.nsps['/music-rooms'].adapter.rooms[datas.uuid].length, user: datas.user});
+            console.log("AFO_", datas.roomName + " has " + io.nsps['/music-rooms'].adapter.rooms[datas.uuid].length + " participant(s)");
+        }
+    });
+
+    //Room creation
+    socket.on('create-room', (datas) => {
+        if (!user) { user = datas.host; }
+        openedRooms[datas.uuid] = datas;  //On ajoute la room dans la liste des rooms existantes
+        openedRooms[datas.uuid].songsQueue = [];
+        console.log("AFO_", datas.host + " has created the room " + datas.roomName + "(" + datas.uuid + ")");
+
+        socket.join(datas.uuid);  //Crée la room et y ajoute l'utilisateur
+        console.log(
+            "AFO_", datas.host + " has joined the room " + datas.roomName + "(" + datas.uuid + ")" + "\n" +
+            "AFO_", datas.roomName + "(" + datas.uuid + ") has " + io.nsps['/music-rooms'].adapter.rooms[datas.uuid].length + " participant(s)"
+        );
+    });
+
+    //Add a song to the queue of a room
+    socket.on('enqueue-song', (datas) => {
+        openedRooms[datas.roomUuid].songsQueue.push( datas.songID, datas.songName );
+        io.of('/music-rooms').to(datas.roomUuid).emit('new-song-enqueued', { songID: datas.songID, songName: datas.songName });
+        console.log("AFO_", datas.user + ' has enqueued the song ' + datas.songName + ' in the room ' + datas.roomUuid);
+    });
+
+    //Disconnected
+    socket.on('disconnect', () => {
+        console.log("AFO_", user + " disconnected from the server");
+    });
+});
+
+router.route('/api/v1/search-room')
+.post(function(request, response){
+    response.setHeader('content-type', 'application/json');
+    if (request.body.needle && request.body.needle != ""){
+        res = {}
+        let regx = new RegExp("(.*)" + request.body.needle + "(.*)");
+
+        for( var roomUuid in openedRooms ){
+            if ( openedRooms[roomUuid].roomName.match(regx) ){
+                openedRooms[roomUuid].nbParticipants = io.nsps['/music-rooms'].adapter.rooms[openedRooms[roomUuid].uuid].length;
+                res[roomUuid] = openedRooms[roomUuid];
+            }
+        }
+
+        if ( Object.keys(res).length !== 0 && res.constructor === Object ){ response.status(200).send(res); }
+        else { response.status(200).send({ error: "No room found for the given needle" }) }
+    } else {
+        response.status(200).send({ error: 'No needle found in the body' });
+    }
+});
+
+app.use(router);  
+server.listen(8080,() => {
     console.log("Listening...");
 })

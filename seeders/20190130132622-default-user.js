@@ -5,7 +5,11 @@ module.exports = {
     return queryInterface.bulkInsert('Users', [{
       username: 'ECSTACYS',
       password: 'SYCATSCE',
-      local_key: null,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }, {
+      username: 'MOUGA',
+      password: 'MOUGA',
       createdAt: new Date(),
       updatedAt: new Date()
     }], {});
