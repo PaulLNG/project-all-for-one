@@ -9,10 +9,35 @@ const bodyParser = require('body-parser');
 var db = require('./models/index');
 var myRouter = express.Router();
 
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
+const salt = bcrypt.genSaltSync(saltRounds);
+
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
 const User = db.sequelize.import(__dirname + "/models/user")
+
+/** verifyToken method - this method verifies token */
+function verifyToken(req, res, next){
+    
+    //Request header with authorization key
+    const bearerHeader = req.headers['authorization'];
+    
+    //Check if there is  a header
+    if(typeof bearerHeader !== 'undefined'){
+        const bearer = bearerHeader.split(' ');
+        
+        //Get Token arrray by spliting
+        const bearerToken = bearer[1];
+        req.token = bearerToken;
+        //call next middleware
+        next();
+    }else{
+        res.sendStatus(403);
+    }
+}
 
 myRouter.route('/api/v1/users')
 .get(function(request, response){
@@ -22,9 +47,25 @@ myRouter.route('/api/v1/users')
     });
 });
 
+myRouter.route('/api/v1/signin')
+.post(function (request, response){
+	response.setHeader('content-type', 'application/json');
+    const user = {
+        id: 1,
+        username: "johndoe",
+        email: "john.doe@test.com"
+    }
+    jwt.sign({user},'SuperSecRetKey', { expiresIn: 60 * 60 }, (err, token) => {
+    	response.json({token});
+    });
+});
+
 myRouter.route('/api/v1/login')
 .post(function(request, response){
     response.setHeader('content-type', 'application/json');
+    
+//    var passwordEnter = bcrypt.hashSync(request.body.password);
+    
     User.sync().then(() => {
     	User.findOne({ 
         where: 
@@ -32,8 +73,12 @@ myRouter.route('/api/v1/login')
     		username: request.body.username
     	} 
     }).then(user => {
-        if (request.body.password == user.password) {
-            response.send(200, {login: true});
+        if (bcrypt.compareSync(request.body.password , user.password)) {
+        	jwt.sign({user},'SuperSecRetKey', { expiresIn: 60 * 60 }, (err, token) => {
+//        	 response.json({user});
+        	 response.send(200, {login: true});
+            });
+           
         } else {
             response.send(401, {login: false, error:'Incorrect Password'});
         }
@@ -45,14 +90,32 @@ myRouter.route('/api/v1/login')
     });
 });
 
+
 myRouter.route('/api/v1/user')
+//.post(verifyToken , function(request, response){
 .post(function(request, response){
     response.setHeader('content-type', 'application/json');
+
+//    // Vérifie le token
+//    jwt.verify(request.token, 'SuperSecRetKey', (err, authData)=>{
+//        if(err){
+//        	response.sendStatus(403);
+//        }else{
+//        	response.json({
+//                msg: "A new post is created",
+//                authData
+//            });
+//        }
+//    });
+    
     if (request.body.username && request.body.password) {
+    	
+    	var passwordEncoded = bcrypt.hashSync(request.body.password , salt );
+    	
     	User.sync().then(() => {
     		User.create({
     	    username: request.body.username, 
-        	password: request.body.password
+        	password: passwordEncoded
 //        	local_key: "ono"
         	
         }).then( (user) => {
