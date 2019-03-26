@@ -61,13 +61,13 @@ router.route('/api/v1/login')
     
     User.sync().then(() => {
     	User.findOne({ 
-        where: 
-    	{
-    		username: request.body.username
-    	} 
+            where: 
+            {
+                username: request.body.username
+            } 
     }).then(user => {
         if (bcrypt.compareSync(request.body.password , user.password)) {
-        	jwt.sign({user},'SuperSecRetKey', { expiresIn: 60 * 60 }, (err, token) => {
+        	jwt.sign({user}, 'SuperSecRetKey', { expiresIn: 60 * 60 }, (err, token) => {
 //        	 response.json({user});
         	 response.send(200, {login: true});
             });
@@ -89,20 +89,20 @@ router.route('/api/v1/user')
 .post(function(request, response){
     response.setHeader('content-type', 'application/json');
     if (request.body.username && request.body.password) {
-    	
+        
+        var salt = bcrypt.genSaltSync(10);
     	var passwordEncoded = bcrypt.hashSync(request.body.password , salt );
     	
     	User.sync().then(() => {
     		User.create({
-    	    username: request.body.username, 
-        	password: passwordEncoded
-        }).then( (user) => {
-            response.send(201, {created: true});
-        }).catch( (err) => {
-            response.send(400, {created: false, error: err});
+                username: request.body.username, 
+                password: passwordEncoded
+            }).then( (user) => {
+                response.send(201, {created: true});
+            }).catch( (err) => {
+                response.send(400, {created: false, error: err});
+            });
         });
-    });
-    	
     } else {
         response.send(400, {error: "Invalid format"});
     }
@@ -112,18 +112,16 @@ router.route('/api/v1/user')
 // (DELETE) Delete a user
 .delete(function(request , response){
 	response.setHeader('content-type', 'application/json');
-	
 	User.sync().then(() => {
-	  User.destroy({
-	  where: {
-	    id: request.body.id
-	  }
-	}).then( (user) => {
-        response.send(204, {deleted: true});
-    }).catch( (err) => {
-        response.send(400, {deleted: false, error: err});
-    });
-	
+	    User.destroy({
+            where: {
+                id: request.body.id
+            }
+        }).then( (user) => {
+            response.send(204, {deleted: true});
+        }).catch( (err) => {
+            response.send(400, {deleted: false, error: err});
+        });
 	});
 })
 
@@ -197,7 +195,8 @@ io.of('/music-rooms').on('connection', (socket) => {
     //Add a song to the queue of a room
     socket.on('enqueue-song', (datas) => {
         openedRooms[datas.roomUuid].songsQueue.push( datas.songID, datas.songName );
-        io.of('/music-rooms').to(datas.roomUuid).emit('new-song-enqueued', { songID: datas.songID, songName: datas.songName });
+        //io.of('/music-rooms').to(datas.roomUuid).emit('update-song-queue', { songID: datas.songID, songName: datas.songName });
+        socket.broadcast.to(datas.roomUuid).emit('update-song-queue', { songID: datas.songID, songName: datas.songName });
         console.log("AFO_", datas.user + ' has enqueued the song ' + datas.songName + ' in the room ' + datas.roomUuid);
     });
 
