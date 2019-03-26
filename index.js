@@ -227,7 +227,8 @@ router.route('/api/v1/search-room')
     }
 });
 
-app.use(router);  
-server.listen(8080,() => {
+app.use(router);
+var port = process.env.PORT || 8080;
+server.listen(port, () => {
     console.log("Listening...");
 })
