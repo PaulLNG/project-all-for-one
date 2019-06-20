@@ -4,12 +4,17 @@ module.exports = {
   up: (queryInterface, Sequelize) => {
     return queryInterface.bulkInsert('Users', [{
       username: 'ECSTACYS',
-      password: '$2y$10$GsbktMBQPaW167gVq3LW.e1r0t.L9Bia2IFkz2DnKZMcU7PBZHLYy',
+      password: '$2b$10$LSLyuXZD.FnBQwG9K5izNuI6ceu6tyoJbKirOy2YGt/S3S/HWFup6',
       createdAt: new Date(),
       updatedAt: new Date()
     }, {
-      username: 'MOUGA',
-      password: '$2y$10$g1yFYIvlBRyQmk2J8vGDXuuzfSMs.Cpfd4y5HDpeCeQr0yi7BJhha',
+      username: 'GONS',
+      password: '$10$XR3y1OW9rzvwIxD72B9rMezEj9Z0oMZjt88erO9iWeAnXCCl8UbpC',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }, {
+      username: 'LANGE',
+      password: '$2b$10$PxEu98ovf0pyQdByv2Wsi.pWT1AIfhC0X4zhkQvBfHDrOiXvzOF9.',
       createdAt: new Date(),
       updatedAt: new Date()
     }], {});

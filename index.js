@@ -67,9 +67,9 @@ router.route('/api/v1/login')
             } 
     }).then(user => {
         if (bcrypt.compareSync(request.body.password , user.password)) {
-        	jwt.sign({user}, 'SuperSecRetKey', { expiresIn: 60 * 60 }, (err, token) => {
+        	jwt.sign({user}, process.env.SECRET_KEY , { expiresIn: 60 * 60 }, (err, token) => {
 //        	 response.json({user});
-        	 response.send(200, {login: true});
+        	 response.send(200, {login: true, token: token});
             });
            
         } else {
@@ -168,7 +168,6 @@ io.of('/music-rooms').on('connection', (socket) => {
 
     //Join a room
     socket.on('join-room', (datas) => {
-        if (!user) { user = datas.user; }
         if( datas.uuid in openedRooms ){
             socket.join(datas.uuid); // On rejoint la room donnée en paramètre
             console.log("AFO_", datas.user + " has joined the room " + datas.roomName + "(" + datas.uuid + ")");
@@ -180,7 +179,6 @@ io.of('/music-rooms').on('connection', (socket) => {
 
     //Room creation
     socket.on('create-room', (datas) => {
-        if (!user) { user = datas.host; }
         openedRooms[datas.uuid] = datas;  //On ajoute la room dans la liste des rooms existantes
         openedRooms[datas.uuid].songsQueue = [];
         console.log("AFO_", datas.host + " has created the room " + datas.roomName + "(" + datas.uuid + ")");
@@ -201,14 +199,26 @@ io.of('/music-rooms').on('connection', (socket) => {
     });
 
     //Disconnected
-    socket.on('disconnect', () => {
-        console.log("AFO_", user + " disconnected from the server");
+    socket.on('disconnection', (datas) => {
+        if (datas.type == "self_disconnection"){
+            socket.leave();
+            console.log("AFO_", datas.user + " has left the room " + datas.roomName + "(" + datas.uuid + ")");
+        }
     });
 });
 
+/** Look for a room **/
 router.route('/api/v1/search-room')
 .post(function(request, response){
-    response.setHeader('content-type', 'application/json');
+    //response.setHeader('content-type', 'application/json');
+
+    //var token = request.headers['x-access-token'];
+    //if (!token) return response.status(401).send({ auth: false, message: 'No token provided.' });
+
+    /*jwt.verify(token, process.env.SECRET_KEY, (error, decoded) => {
+        //if (error) console.log(error);
+    });*/
+
     if (request.body.needle && request.body.needle != ""){
         res = {}
         let regx = new RegExp("(.*)" + request.body.needle + "(.*)");
