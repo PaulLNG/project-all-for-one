@@ -174,6 +174,10 @@ io.of('/music-rooms').on('connection', (socket) => {
 
             io.of('/music-rooms').in(datas.uuid).emit('new-participant', { nbParticipants : io.nsps['/music-rooms'].adapter.rooms[datas.uuid].length, user: datas.user});
             console.log("AFO_", datas.roomName + " has " + io.nsps['/music-rooms'].adapter.rooms[datas.uuid].length + " participant(s)");
+
+            for ( var song of openedRooms[datas.uuid].songsQueue ){
+                socket.emit('update-song-queue', { songID: song.ID, songName: song.name} );
+            }
         }
     });
 
@@ -192,7 +196,7 @@ io.of('/music-rooms').on('connection', (socket) => {
 
     //Add a song to the queue of a room
     socket.on('enqueue-song', (datas) => {
-        openedRooms[datas.roomUuid].songsQueue.push( datas.songID, datas.songName );
+        openedRooms[datas.roomUuid].songsQueue.push({ ID: datas.songID, name: datas.songName });
         //io.of('/music-rooms').to(datas.roomUuid).emit('update-song-queue', { songID: datas.songID, songName: datas.songName });
         socket.broadcast.to(datas.roomUuid).emit('update-song-queue', { songID: datas.songID, songName: datas.songName });
         console.log("AFO_", datas.user + ' has enqueued the song ' + datas.songName + ' in the room ' + datas.roomUuid);
@@ -201,7 +205,7 @@ io.of('/music-rooms').on('connection', (socket) => {
     //Disconnected
     socket.on('disconnection', (datas) => {
         if (datas.type == "self_disconnection"){
-            socket.leave();
+            socket.leave(datas.uuid);
             console.log("AFO_", datas.user + " has left the room " + datas.roomName + "(" + datas.uuid + ")");
         }
     });
