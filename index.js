@@ -214,31 +214,31 @@ io.of('/music-rooms').on('connection', (socket) => {
 /** Look for a room **/
 router.route('/api/v1/search-room')
 .post(function(request, response){
-    //response.setHeader('content-type', 'application/json');
 
-    //var token = request.headers['x-access-token'];
-    //if (!token) return response.status(401).send({ auth: false, message: 'No token provided.' });
+    var token = request.headers['x-access-token'];
+    if (!token) return response.status(401).send({ auth: false, message: 'No token provided.' });
 
-    /*jwt.verify(token, process.env.SECRET_KEY, (error, decoded) => {
-        //if (error) console.log(error);
-    });*/
+    jwt.verify(token, process.env.SECRET_KEY, (error, decoded) => {
+        if (error) console.log(error);
+        else {
+            if (request.body.needle && request.body.needle != ""){
+                res = {}
+                let regx = new RegExp("(.*)" + request.body.needle + "(.*)");
 
-    if (request.body.needle && request.body.needle != ""){
-        res = {}
-        let regx = new RegExp("(.*)" + request.body.needle + "(.*)");
+                for( var roomUuid in openedRooms ){
+                    if ( openedRooms[roomUuid].roomName.match(regx) ){
+                        openedRooms[roomUuid].nbParticipants = io.nsps['/music-rooms'].adapter.rooms[openedRooms[roomUuid].uuid].length;
+                        res[roomUuid] = openedRooms[roomUuid];
+                    }
+                }
 
-        for( var roomUuid in openedRooms ){
-            if ( openedRooms[roomUuid].roomName.match(regx) ){
-                openedRooms[roomUuid].nbParticipants = io.nsps['/music-rooms'].adapter.rooms[openedRooms[roomUuid].uuid].length;
-                res[roomUuid] = openedRooms[roomUuid];
-            }
+                if ( Object.keys(res).length !== 0 && res.constructor === Object ){ response.status(200).send(res); }
+                else { response.status(200).send({ error: "No room found for the given needle" }) }
+            } else {
+                response.status(200).send({ error: 'No needle found in the body' });
+            }            
         }
-
-        if ( Object.keys(res).length !== 0 && res.constructor === Object ){ response.status(200).send(res); }
-        else { response.status(200).send({ error: "No room found for the given needle" }) }
-    } else {
-        response.status(200).send({ error: 'No needle found in the body' });
-    }
+    });
 });
 
 app.use(router);
