@@ -241,6 +241,15 @@ router.route('/api/v1/search-room')
     });
 });
 
+
+/**-----------------------------------------------------------------------------SPOTIFY RERESH TOKEN---------------------------------------------------------------**/
+
+const refreshRoute  = require('./Spotify/refresh');
+const swapRoute     = require('./Spotify/swap');
+
+app.use('/refresh', refreshRoute);
+app.use('/swap', swapRoute);
+
 app.use(router);
 var port = process.env.PORT || 8080;
 server.listen(port, () => {

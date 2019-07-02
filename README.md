@@ -6,12 +6,13 @@ All for One is a mobile application that allows you and your friends to play mus
 
 ## Prerequisites
 
+Create a [Spotify Application](https://developer.spotify.com/dashboard/applications).
 The server uses [Node and NPM](https://nodejs.org/en/). You will also need [ngrok](https://ngrok.com/) for the application to communicate with the server. Be sure you have a database server ready.
 
 ## Installation
 
 1. Clone the Git repository
-2. Create a .env file based on the .env.example. It contains the informations needed for the database connection and the secret key for JSON Web Token.
+2. Create a .env file based on the .env.example. It contains the informations needed for the database connection, the secret key for JSON Web Token and the Spotify Application informations.
 3. Run the following command to install dependencies.
 ```bash
 $ npm install
